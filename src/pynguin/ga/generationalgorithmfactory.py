@@ -33,6 +33,7 @@ import pynguin.ga.testsuitechromosome as tsc
 import pynguin.ga.testsuitechromosomefactory as tscf
 import pynguin.testcase.testfactory as tf
 import pynguin.utils.statistics.statisticsobserver as sso
+import pynguin.dynamicobserver.diversityobserver as do
 
 from pynguin.analyses.constants import ConstantProvider
 from pynguin.analyses.constants import EmptyConstantProvider
@@ -63,7 +64,6 @@ from pynguin.testcase.execution import AbstractTestCaseExecutor
 from pynguin.testcase.execution import TypeTracingTestCaseExecutor
 from pynguin.utils.exceptions import ConfigurationException
 from pynguin.utils.orderedset import OrderedSet
-
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -262,6 +262,7 @@ class TestSuiteGenerationAlgorithmFactory(GenerationAlgorithmFactory[tsc.TestSui
         strategy.add_search_observer(sso.SequenceStartTimeObserver())
         strategy.add_search_observer(sso.IterationObserver())
         strategy.add_search_observer(sso.BestIndividualObserver())
+        strategy.add_search_observer(do.DiversityObserver())
 
         crossover_function = self._get_crossover_function()
         strategy.crossover_function = crossover_function
