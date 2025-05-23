@@ -13,6 +13,7 @@ class Metric(Enum):
     FV = "FV"
     NSC = "NSC"
     AC = "AC"
+    NV = "NV"
 
 class FitnessObservationMethod(Enum):
     MEAN = "mean"
