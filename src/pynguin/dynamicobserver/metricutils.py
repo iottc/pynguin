@@ -12,6 +12,7 @@ class Metric(Enum):
     CR = "CR"
     FV = "FV"
     NSC = "NSC"
+    AC = "AC"
 
 class FitnessObservationMethod(Enum):
     MEAN = "mean"
