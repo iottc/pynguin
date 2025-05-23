@@ -125,7 +125,6 @@ class AutocorrelationCalculator(MetricCalculator):
                 case FitnessObservationMethod.BEST:
                     best_fitnesses = self.helper.get_best_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
                     return self._calculate_autocorrelation(best_fitnesses, statistics.mean(fitnesses_of_generations))
-
                 case FitnessObservationMethod.MEAN:
                     mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
                     return self._calculate_autocorrelation(mean_fitnesses, statistics.mean(fitnesses_of_generations))
@@ -150,3 +149,27 @@ class AutocorrelationCalculator(MetricCalculator):
             autocorellation_numerator += (fitnesses_to_observe[i] - subtrahend) * (fitnesses_to_observe[i + self.STEP_SIZE] - subtrahend)
 
         return Metric.AC, autocorellation_numerator / autocorellation_denominator
+
+class NeutralityVolumeCalculator(MetricCalculator):
+    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+        if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
+            calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
+
+            match method:
+                case FitnessObservationMethod.BEST:
+                    best_fitnesses = self.helper.get_best_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    return self._calculate_neutrality_volume(best_fitnesses)
+                case FitnessObservationMethod.MEAN:
+                    mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    return self._calculate_neutrality_volume(mean_fitnesses)
+                case FitnessObservationMethod.MEDIAN:
+                    median_fitnesses = self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    return self._calculate_neutrality_volume(median_fitnesses)
+                case _:
+                    return (Metric.EMPTY, 0)
+        else:
+            return Metric.EMPTY, 0
+
+    def _calculate_neutrality_volume(self, fitnesses_to_observe: list[float]):
+        self._logger.info(f"Fitnesses NV: {fitnesses_to_observe} with NV: {len(set(fitnesses_to_observe))}.")
+        return Metric.NV, len(set(fitnesses_to_observe))
