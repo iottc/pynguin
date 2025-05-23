@@ -262,7 +262,7 @@ class TestSuiteGenerationAlgorithmFactory(GenerationAlgorithmFactory[tsc.TestSui
         strategy.add_search_observer(sso.SequenceStartTimeObserver())
         strategy.add_search_observer(sso.IterationObserver())
         strategy.add_search_observer(sso.BestIndividualObserver())
-        strategy.add_search_observer(do.DiversityObserver())
+        strategy.add_search_observer(do.DynamicMetricObserver())
 
         crossover_function = self._get_crossover_function()
         strategy.crossover_function = crossover_function

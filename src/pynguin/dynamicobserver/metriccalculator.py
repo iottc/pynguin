@@ -2,15 +2,15 @@ from abc import ABC, abstractmethod
 import math
 import statistics
 from pynguin.ga.testsuitechromosome import TestSuiteChromosome
-from pynguin.dynamicobserver.metricutils import DynamicMetricHelper, Metric, FitnessObservationMethod
+from pynguin.dynamicobserver.metricutils import MetricHelper, Metric, FitnessObservationMethod
 import logging
 
-class DynamicMetricCalculator(ABC):
+class MetricCalculator(ABC):
     SLIDING_WINDOW_SIZE : int = 10
     _logger = logging.getLogger(__name__)
 
     def __init__(self):
-        self.helper = DynamicMetricHelper()
+        self.helper = MetricHelper()
 
     @abstractmethod
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
@@ -21,7 +21,7 @@ class DynamicMetricCalculator(ABC):
             search_iteration: Number of iterations done.
         """
 
-class PopulationInformationContentCalculator(DynamicMetricCalculator):
+class PopulationInformationContentCalculator(MetricCalculator):
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
@@ -51,7 +51,7 @@ class PopulationInformationContentCalculator(DynamicMetricCalculator):
 
         return Metric.PIC, pic * -1
 
-class FitnessVarianceCalculator(DynamicMetricCalculator):
+class FitnessVarianceCalculator(MetricCalculator):
         def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             match method:
                 case FitnessObservationMethod.MEAN:
@@ -80,7 +80,7 @@ class FitnessVarianceCalculator(DynamicMetricCalculator):
 
 
 
-class ChangeRateCalculator(DynamicMetricCalculator):
+class ChangeRateCalculator(MetricCalculator):
         def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
                 calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
@@ -106,3 +106,47 @@ class ChangeRateCalculator(DynamicMetricCalculator):
                 sum += int(fitness_evolution)
 
             return (Metric.CR, sum / self.SLIDING_WINDOW_SIZE)
+
+class AutocorrelationCalculator(MetricCalculator):
+
+    STEP_SIZE: int = 1
+
+    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+        if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
+            calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
+
+            fitnesses_of_generations: list[float] = []
+            for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
+                fitness_of_generation: list[float] = self.helper.get_fitness_of_generation(actual_search_results[i])
+                for fitness in fitness_of_generation:
+                    fitnesses_of_generations.append(fitness)
+
+            match method:
+                case FitnessObservationMethod.BEST:
+                    best_fitnesses = self.helper.get_best_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    return self._calculate_autocorrelation(best_fitnesses, statistics.mean(fitnesses_of_generations))
+
+                case FitnessObservationMethod.MEAN:
+                    mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    return self._calculate_autocorrelation(mean_fitnesses, statistics.mean(fitnesses_of_generations))
+                case FitnessObservationMethod.MEDIAN:
+                    median_fitnesses = self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    return self._calculate_autocorrelation(median_fitnesses, statistics.mean(fitnesses_of_generations))
+                case _:
+                    return (Metric.EMPTY, 0)
+        else:
+            return (Metric.EMPTY, 0)
+
+    def _calculate_autocorrelation(self, fitnesses_to_observe, subtrahend):
+        autocorellation_numerator: float = 0
+        autocorellation_denominator: float = 0
+        for i in range(0, self.SLIDING_WINDOW_SIZE ):
+            autocorellation_denominator += (fitnesses_to_observe[i] - subtrahend) ** 2
+
+        if autocorellation_denominator == 0:
+            return (Metric.EMPTY, 0)
+
+        for i in range(0, self.SLIDING_WINDOW_SIZE - self.STEP_SIZE):
+            autocorellation_numerator += (fitnesses_to_observe[i] - subtrahend) * (fitnesses_to_observe[i + self.STEP_SIZE] - subtrahend)
+
+        return Metric.AC, autocorellation_numerator / autocorellation_denominator
