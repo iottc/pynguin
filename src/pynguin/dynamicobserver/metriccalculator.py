@@ -2,15 +2,15 @@ from abc import ABC, abstractmethod
 import math
 import statistics
 from pynguin.ga.testsuitechromosome import TestSuiteChromosome
-from pynguin.dynamicobserver.metricutils import DynamicMetricHelper, Metric, FitnessObservationMethod
+from pynguin.dynamicobserver.metricutils import MetricHelper, Metric, FitnessObservationMethod
 import logging
 
-class DynamicMetricCalculator(ABC):
+class MetricCalculator(ABC):
     SLIDING_WINDOW_SIZE : int = 10
     _logger = logging.getLogger(__name__)
 
     def __init__(self):
-        self.helper = DynamicMetricHelper()
+        self.helper = MetricHelper()
 
     @abstractmethod
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
@@ -21,7 +21,7 @@ class DynamicMetricCalculator(ABC):
             search_iteration: Number of iterations done.
         """
 
-class PopulationInformationContentCalculator(DynamicMetricCalculator):
+class PopulationInformationContentCalculator(MetricCalculator):
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
@@ -51,7 +51,7 @@ class PopulationInformationContentCalculator(DynamicMetricCalculator):
 
         return Metric.PIC, pic * -1
 
-class FitnessVarianceCalculator(DynamicMetricCalculator):
+class FitnessVarianceCalculator(MetricCalculator):
         def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             match method:
                 case FitnessObservationMethod.MEAN:
@@ -80,7 +80,7 @@ class FitnessVarianceCalculator(DynamicMetricCalculator):
 
 
 
-class ChangeRateCalculator(DynamicMetricCalculator):
+class ChangeRateCalculator(MetricCalculator):
         def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
                 calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE

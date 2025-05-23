@@ -1,12 +1,12 @@
 import pynguin.ga.testsuitechromosome as tsc
 import pynguin.ga.searchobserver as so
 import pynguin.dynamicobserver.metriccalculator as calc
-from pynguin.dynamicobserver.metricutils import MetricWriter, MetricMeasure, DynamicMetricHelper, Metric, FitnessObservationMethod
+from pynguin.dynamicobserver.metricutils import MetricWriter, MetricMeasure, MetricHelper, Metric, FitnessObservationMethod
 import time
 
 import logging
 
-class DiversityObserver(so.SearchObserver):
+class DynamicMetricObserver(so.SearchObserver):
 
     _logger = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ class DiversityObserver(so.SearchObserver):
         self.metric_results: list[MetricMeasure] = []
 
         self._writer = MetricWriter()
-        self.helper = DynamicMetricHelper()
-        self._calculators: list[calc.DynamicMetricCalculator] = []
+        self.helper = MetricHelper()
+        self._calculators: list[calc.MetricCalculator] = []
 
 
     def before_search_start(self, start_time_ns: int) -> None:

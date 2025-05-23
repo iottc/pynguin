@@ -54,7 +54,7 @@ class MetricWriter():
         except OSError as error:
             self._logger.exception("Error while writing statistics: %s", error)
 
-class DynamicMetricHelper:
+class MetricHelper:
     _logger = logging.getLogger(__name__)
 
     def get_mean_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
