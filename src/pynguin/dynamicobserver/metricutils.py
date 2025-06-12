@@ -65,10 +65,13 @@ class MetricWriter():
 class MetricHelper:
     _logger = logging.getLogger(__name__)
 
-    def get_mean_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
+    def __init__(self):
+        self.SLIDING_WINDOW_SIZE = config.configuration.metric_configuration.sliding_window_size
+
+    def get_mean_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int) -> list[float]:
         result = []
 
-        for i in range(0 + int(sliding_window_size * (calculation_iteration - 1 ) ), sliding_window_size + sliding_window_size * (calculation_iteration - 1 )):
+        for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             mean_fitness : float = (statistics.mean(test.get_fitness() for test in generation.test_case_chromosomes))
             self._logger.info(f"Mean fitness of iteration {i} is {mean_fitness}")
@@ -76,10 +79,10 @@ class MetricHelper:
 
         return result
 
-    def get_median_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
+    def get_median_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int) -> list[float]:
         result = []
 
-        for i in range(0 + int(sliding_window_size * (calculation_iteration - 1 ) ), sliding_window_size + sliding_window_size * (calculation_iteration - 1 )):
+        for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             median_fitness : float = (statistics.median(test.get_fitness() for test in generation.test_case_chromosomes))
             self._logger.info(f"Median fitness of iteration {i} is {median_fitness}")
@@ -87,10 +90,10 @@ class MetricHelper:
 
         return result
 
-    def get_max_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
+    def get_max_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int) -> list[float]:
         result = []
 
-        for i in range(0 + int(sliding_window_size * (calculation_iteration - 1 ) ), sliding_window_size + sliding_window_size * (calculation_iteration - 1 )):
+        for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             best_fitness : float = (max(test.get_fitness() for test in generation.test_case_chromosomes))
             self._logger.info(f"Max fitness of iteration {i} is {best_fitness}")
@@ -98,10 +101,10 @@ class MetricHelper:
 
         return result
 
-    def get_min_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
+    def get_min_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int) -> list[float]:
         result = []
 
-        for i in range(0 + int(sliding_window_size * (calculation_iteration - 1 ) ), sliding_window_size + sliding_window_size * (calculation_iteration - 1 )):
+        for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             best_fitness : float = (min(test.get_fitness() for test in generation.test_case_chromosomes))
             self._logger.info(f"Min fitness of iteration {i} is {best_fitness}")

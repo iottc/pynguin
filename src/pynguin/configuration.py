@@ -578,6 +578,14 @@ class StoppingConfiguration:
     """The time (in seconds) per statement that a test is allowed to run
     (up to maximum_test_execution_timeout)."""
 
+@dataclasses.dataclass
+class MetricConfiguration:
+
+    enable_metric_calculation: bool = False
+    """Enable dynmamic metric calculation"""
+
+    sliding_window_size: int = 10
+    """Size of Sliding window for some metrics"""
 
 @dataclasses.dataclass
 class Configuration:
@@ -633,6 +641,8 @@ class Configuration:
     ignore_methods: list[str] = dataclasses.field(default_factory=list)
     """Ignore the methods specified here from the module analysis."""
 
+    metric_configuration: MetricConfiguration = dataclasses.field(default_factory=MetricConfiguration)
+    """Configuration used for dynamic search metrics"""
 
 # Singleton instance of the configuration.
 configuration = Configuration(

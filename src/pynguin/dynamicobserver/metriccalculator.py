@@ -6,14 +6,17 @@ import math
 import statistics
 from pynguin.ga.testsuitechromosome import TestSuiteChromosome
 from pynguin.dynamicobserver.metricutils import MetricHelper, Metric, FitnessObservationMethod
+import pynguin.configuration as config
 import logging
 
+
 class MetricCalculator(ABC):
-    SLIDING_WINDOW_SIZE : int = 5
     _logger = logging.getLogger(__name__)
 
     def __init__(self):
         self.helper = MetricHelper()
+        self.SLIDING_WINDOW_SIZE = config.configuration.metric_configuration.sliding_window_size
+
 
     @abstractmethod
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
@@ -25,22 +28,23 @@ class MetricCalculator(ABC):
         """
 
 class PopulationInformationContentCalculator(MetricCalculator):
+
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
             match method:
                 case FitnessObservationMethod.MAX:
-                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration))
                     return self._calculate_pic(binary_fitness_evolution)
                 case FitnessObservationMethod.MIN:
-                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration))
                     return self._calculate_pic(binary_fitness_evolution)
                 case FitnessObservationMethod.MEAN:
-                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration))
                     return self._calculate_pic(binary_fitness_evolution)
                 case FitnessObservationMethod.MEDIAN:
-                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                    binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration))
                     return self._calculate_pic(binary_fitness_evolution)
                 case _:
                     return Metric.EMPTY, 0
@@ -87,22 +91,23 @@ class FitnessVarianceCalculator(MetricCalculator):
 
 
 class ChangeRateCalculator(MetricCalculator):
+
         def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
                 calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
                 match method:
                     case FitnessObservationMethod.MAX:
-                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration))
                         return self._calculate_change_rate(binary_fitness_evolution)
                     case FitnessObservationMethod.MIN:
-                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration))
                         return self._calculate_change_rate(binary_fitness_evolution)
                     case FitnessObservationMethod.MEAN:
-                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration))
                         return self._calculate_change_rate(binary_fitness_evolution)
                     case FitnessObservationMethod.MEDIAN:
-                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE))
+                        binary_fitness_evolution = self.helper.get_fitness_evoluation_binary_string(self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration))
                         return self._calculate_change_rate(binary_fitness_evolution)
                     case _:
                         return (Metric.EMPTY, 0)
@@ -118,7 +123,7 @@ class ChangeRateCalculator(MetricCalculator):
 
 class AutocorrelationCalculator(MetricCalculator):
 
-    STEP_SIZE: int = 1
+    STEP_SIZE = 1
 
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
@@ -132,16 +137,16 @@ class AutocorrelationCalculator(MetricCalculator):
 
             match method:
                 case FitnessObservationMethod.MAX:
-                    best_fitnesses = self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    best_fitnesses = self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_autocorrelation(best_fitnesses, statistics.mean(fitnesses_of_generations))
                 case FitnessObservationMethod.MIN:
-                    min_fitnesses = self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    min_fitnesses = self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_autocorrelation(min_fitnesses, statistics.mean(fitnesses_of_generations))
                 case FitnessObservationMethod.MEAN:
-                    mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_autocorrelation(mean_fitnesses, statistics.mean(fitnesses_of_generations))
                 case FitnessObservationMethod.MEDIAN:
-                    median_fitnesses = self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    median_fitnesses = self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_autocorrelation(median_fitnesses, statistics.mean(fitnesses_of_generations))
                 case _:
                     return (Metric.EMPTY, 0)
@@ -163,22 +168,23 @@ class AutocorrelationCalculator(MetricCalculator):
         return Metric.AC, autocorellation_numerator / autocorellation_denominator
 
 class NeutralityVolumeCalculator(MetricCalculator):
+
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
             match method:
                 case FitnessObservationMethod.MAX:
-                    max_fitnesses = self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    max_fitnesses = self.helper.get_max_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_neutrality_volume(max_fitnesses)
                 case FitnessObservationMethod.MIN:
-                    min_fitnesses = self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    min_fitnesses = self.helper.get_min_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_neutrality_volume(min_fitnesses)
                 case FitnessObservationMethod.MEAN:
-                    mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    mean_fitnesses = self.helper.get_mean_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_neutrality_volume(mean_fitnesses)
                 case FitnessObservationMethod.MEDIAN:
-                    median_fitnesses = self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration, self.SLIDING_WINDOW_SIZE)
+                    median_fitnesses = self.helper.get_median_fitness_per_generation(actual_search_results, calculation_iteration)
                     return self._calculate_neutrality_volume(median_fitnesses)
                 case _:
                     return (Metric.EMPTY, 0)
