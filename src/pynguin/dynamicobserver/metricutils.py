@@ -33,11 +33,23 @@ class MetricMeasure:
     iteration: int
     result: float
     population_size: int
+    max_fitness: float
     average_fitness: float
+    min_fitness: float
     duration: float
 
+@dataclass
+class TestCasesStrings:
+    iteration: int
+    test_cases: list[str]
+
+@dataclass
+class FitnessValues:
+    iteration: int
+    fitness_values: list[float]
+
 class MetricWriter():
-    FILE_HEADER = "module,iteration,populationSize,averageFitness,metric,result,durationInMin\n"
+    FILE_HEADER = "module,iteration,populationSize,maxFitness,averageFitness,minFitness,metric,result,durationInMin\n"
     _logger = logging.getLogger(__name__)
 
     def write_metrics(self, metrics: list[MetricMeasure]) -> None:
@@ -58,9 +70,59 @@ class MetricWriter():
                 if header_necessary:
                     file.write(self.FILE_HEADER)
                 for measure in metrics:
-                    file.write(f"{config.configuration.module_name},{measure.iteration},{measure.population_size},{measure.average_fitness},{measure.name.value + measure.fitness_observation.value},{measure.result}, {str(measure.duration / 60000000000 )}\n")
+                    file.write(f"{config.configuration.module_name},{measure.iteration},{measure.population_size},{measure.max_fitness},{measure.average_fitness},{measure.min_fitness},{measure.name.value + measure.fitness_observation.value},{measure.result}, {str(measure.duration / 60000000000 )}\n")
         except OSError as error:
             self._logger.exception("Error while writing statistics: %s", error)
+
+class RawDataWriter:
+
+    FILE_HEADER_FITNESS_VALUES = "module,iteration,maxFitness,minFitness,averageFitness,fitnesses\n"
+    FILE_HEADER_TEST_CASES = "module,iteration,testcases\n"
+
+    _logger = logging.getLogger(__name__)
+
+    def write_raw_data(self, fitness_values: list[FitnessValues], test_cases: list[TestCasesStrings]) -> None:
+        self._write_test_cases(test_cases)
+        self._write_fitness_values(fitness_values)
+
+    def _write_test_cases(self, test_cases: list[TestCasesStrings]):
+        try:
+            output_dir = Path(config.configuration.statistics_output.report_dir).resolve()
+            output_file = output_dir / "test_cases.csv"
+            header_necessary: bool = self._is_header_necessary(output_file)
+
+            with open(output_file, "a") as file:
+                if header_necessary:
+                    file.write(self.FILE_HEADER_TEST_CASES)
+                for test_case in test_cases:
+                    test_cases_string = "|".join(test_case.test_cases)
+                    file.write(f"{config.configuration.module_name},{test_case.iteration},{test_cases_string}\n")
+        except OSError as error:
+            self._logger.exception("Error while writing statistics: %s", error)
+
+    def _write_fitness_values(self, fitness_values: list[FitnessValues]):
+        try:
+            output_dir = Path(config.configuration.statistics_output.report_dir).resolve()
+            output_file = output_dir / "fitness_values.csv"
+            header_necessary: bool = self._is_header_necessary(output_file)
+
+            with open(output_file, "a") as file:
+                if header_necessary:
+                    file.write(self.FILE_HEADER_FITNESS_VALUES)
+                for fitnesses in fitness_values:
+                    fitness_values_string = "|".join(str(fitness) for fitness in fitness_values)
+                    file.write(f"{config.configuration.module_name},{fitnesses.iteration},{max(fitnesses.fitness_values)},{min(fitnesses.fitness_values)},{statistics.mean(fitnesses.fitness_values)},{fitness_values_string}\n")
+        except OSError as error:
+            self._logger.exception("Error while writing statistics: %s", error)
+
+    def _is_header_necessary(self, output_file) -> bool:
+        try:
+            output_file.resolve(strict=True)
+        except FileNotFoundError:
+            return True
+        else:
+            return False
+
 
 class MetricHelper:
     _logger = logging.getLogger(__name__)
