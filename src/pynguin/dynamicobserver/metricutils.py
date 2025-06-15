@@ -1,10 +1,12 @@
 import pynguin.configuration as config
-import statistics
+from pynguin.testcase.testcase import TestCase
 from pynguin.ga.testsuitechromosome import TestSuiteChromosome
 from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
 import logging
+import statistics
+
 
 class Metric(Enum):
     EMPTY = "Empty"
@@ -14,11 +16,15 @@ class Metric(Enum):
     NSC = "NSC"
     AC = "AC"
     NV = "NV"
+    DIV = "DIV"
+    FD = "FD"
+    SV = "SVC"
 
 class FitnessObservationMethod(Enum):
     MEAN = "mean"
-    BEST = "best"
+    MAX = "max"
     MEDIAN = "median"
+    MIN = "min"
 
 @dataclass
 class MetricMeasure:
@@ -81,13 +87,24 @@ class MetricHelper:
 
         return result
 
-    def get_best_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
+    def get_max_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
         result = []
 
         for i in range(0 + int(sliding_window_size * (calculation_iteration - 1 ) ), sliding_window_size + sliding_window_size * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             best_fitness : float = (max(test.get_fitness() for test in generation.test_case_chromosomes))
-            self._logger.info(f"Best fitness of iteration {i} is {best_fitness}")
+            self._logger.info(f"Max fitness of iteration {i} is {best_fitness}")
+            result.append(best_fitness)
+
+        return result
+
+    def get_min_fitness_per_generation(self, actual_search_results: list[TestSuiteChromosome], calculation_iteration: int, sliding_window_size: int) -> list[float]:
+        result = []
+
+        for i in range(0 + int(sliding_window_size * (calculation_iteration - 1 ) ), sliding_window_size + sliding_window_size * (calculation_iteration - 1 )):
+            generation = actual_search_results[i]
+            best_fitness : float = (min(test.get_fitness() for test in generation.test_case_chromosomes))
+            self._logger.info(f"Min fitness of iteration {i} is {best_fitness}")
             result.append(best_fitness)
 
         return result
@@ -97,7 +114,8 @@ class MetricHelper:
 
         for test in generation.test_case_chromosomes:
             fitnesses.append(test.get_fitness())
-        self._logger.info(f"Best fitnesses are: {' '.join(map(str,fitnesses))}")
+
+        self._logger.info(f"Fitnesses are: {' '.join(map(str,fitnesses))}")
 
         return fitnesses
 
@@ -129,3 +147,13 @@ class MetricHelper:
 
     def get_actual_population_size(self, actual_search_results: list[TestSuiteChromosome]) -> int:
         return len(actual_search_results[len(actual_search_results) - 1].test_case_chromosomes)
+
+    def test_case_to_string(self, test_case: TestCase) -> str:
+        statements_count = len(test_case.statements)
+        self._logger.info(f"Anzahl TestCaseStatements: {statements_count}")
+
+        statements = [str(statement) for statement in test_case.statements]
+
+        statements_string = ", ".join(statements)
+
+        return f"TestCase mit {statements_count} Statements: [{statements_string}]"

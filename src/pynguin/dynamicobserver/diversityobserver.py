@@ -51,6 +51,9 @@ class DynamicMetricObserver(so.SearchObserver):
         self._calculators.append(calc.ChangeRateCalculator())
         self._calculators.append(calc.AutocorrelationCalculator())
         self._calculators.append(calc.NeutralityVolumeCalculator())
+        self._calculators.append(calc.DiversityCalculator())
+        self._calculators.append(calc.StateVarianceCalculator())
+        self._calculators.append(calc.FunctionDispersionCalculator())
 
     def _init_metric_calculation(self):
         for calculator in self._calculators:
