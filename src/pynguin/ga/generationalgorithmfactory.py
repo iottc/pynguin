@@ -263,10 +263,11 @@ class TestSuiteGenerationAlgorithmFactory(GenerationAlgorithmFactory[tsc.TestSui
         strategy.add_search_observer(sso.IterationObserver())
         strategy.add_search_observer(sso.BestIndividualObserver())
 
-        self._logger.info(f"Metrics activated: {config.configuration.metric_configuration.enable_metric_calculation}")
-
         if config.configuration.metric_configuration.enable_metric_calculation:
             strategy.add_search_observer(do.DynamicMetricObserver())
+
+        if config.configuration.metric_configuration.enable_raw_data_output:
+            strategy.add_search_observer(do.GenerationObserver())
 
         crossover_function = self._get_crossover_function()
         strategy.crossover_function = crossover_function

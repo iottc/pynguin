@@ -587,6 +587,9 @@ class MetricConfiguration:
     sliding_window_size: int = 10
     """Size of Sliding window for some metrics"""
 
+    enable_raw_data_output: bool = False
+    """Enables output of test_cases as strings and fitness values per generation"""
+
 @dataclasses.dataclass
 class Configuration:
     """General configuration for the test generator."""

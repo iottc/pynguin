@@ -111,6 +111,7 @@ class ChangeRateCalculator(MetricCalculator):
                         return self._calculate_change_rate(binary_fitness_evolution)
                     case _:
                         return (Metric.EMPTY, 0)
+
             else:
                 return (Metric.EMPTY, 0)
 
@@ -221,7 +222,6 @@ class DiversityCalculator(MetricCalculator):
 
         return distances
 
-
     def _align_length(self, first_testcase: str, second_testcase: str):
         first = [char for char in first_testcase]
         second = [char for char in second_testcase]
@@ -231,7 +231,6 @@ class DiversityCalculator(MetricCalculator):
         second += [''] * (max_len - len(second))
 
         return first, second
-
 
 class FunctionDispersionCalculator(MetricCalculator):
     # Evtl. existieren zu wenige Individuen
