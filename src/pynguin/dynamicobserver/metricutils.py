@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 import logging
 import statistics
+import ast
+import json
 
 
 class Metric(Enum):
@@ -17,6 +19,7 @@ class Metric(Enum):
     AC = "AC"
     NV = "NV"
     DIV = "DIV"
+    DIVEX = "DIVEX"
     FD = "FD"
     SV = "SVC"
 
@@ -36,6 +39,7 @@ class MetricMeasure:
     max_fitness: float
     average_fitness: float
     min_fitness: float
+    coverage: float
     duration: float
 
 @dataclass
@@ -47,9 +51,10 @@ class TestCasesStrings:
 class FitnessValues:
     iteration: int
     fitness_values: list[float]
+    coverage: float
 
 class MetricWriter():
-    FILE_HEADER = "module,iteration,populationSize,maxFitness,averageFitness,minFitness,metric,result,durationInMin\n"
+    FILE_HEADER = "module,iteration,populationSize,maxFitness,averageFitness,minFitness,coverage,metric,result,durationInMin\n"
     _logger = logging.getLogger(__name__)
 
     def write_metrics(self, metrics: list[MetricMeasure]) -> None:
@@ -70,37 +75,32 @@ class MetricWriter():
                 if header_necessary:
                     file.write(self.FILE_HEADER)
                 for measure in metrics:
-                    file.write(f"{config.configuration.module_name},{measure.iteration},{measure.population_size},{measure.max_fitness},{measure.average_fitness},{measure.min_fitness},{measure.name.value + measure.fitness_observation.value},{measure.result}, {str(measure.duration / 60000000000 )}\n")
+                    file.write(f"{config.configuration.module_name},{measure.iteration},{measure.population_size},{measure.max_fitness},{measure.average_fitness},{measure.min_fitness},{measure.coverage},{measure.name.value + measure.fitness_observation.value},{measure.result}, {str(measure.duration / 60000000000 )}\n")
         except OSError as error:
-            self._logger.exception("Error while writing statistics: %s", error)
+            self._logger.exception("Error while writing statistics to csv: %s", error)
 
 class RawDataWriter:
 
-    FILE_HEADER_FITNESS_VALUES = "module,iteration,maxFitness,minFitness,averageFitness,fitnesses\n"
-    FILE_HEADER_TEST_CASES = "module,iteration,testcases\n"
+    FILE_HEADER_FITNESS_VALUES = "module,iteration,coverage,maxFitness,minFitness,averageFitness,fitnesses\n"
+    FILE_HEADER_TEST_CASES = "module,number,testcase\n"
 
     _logger = logging.getLogger(__name__)
 
-    def write_raw_data(self, fitness_values: list[FitnessValues], test_cases: list[TestCasesStrings]) -> None:
-        self._write_test_cases(test_cases)
-        self._write_fitness_values(fitness_values)
+    def write_test_cases(self, test_cases: list[str], iteration: int):
+        number = 0
+        for test_case in test_cases:
+            try:
+                output_dir = Path(config.configuration.statistics_output.report_dir).resolve()
+                output_file = output_dir / "test_cases" / f"test_case_{config.configuration.module_name}_iteration_{iteration}_number_{number}.py"
+                with open(output_file, "a") as file:
+                    file.write(test_case)
+                    number += 1
 
-    def _write_test_cases(self, test_cases: list[TestCasesStrings]):
-        try:
-            output_dir = Path(config.configuration.statistics_output.report_dir).resolve()
-            output_file = output_dir / "test_cases.csv"
-            header_necessary: bool = self._is_header_necessary(output_file)
+            except OSError as error:
+                self._logger.exception("Error while writing test cases to csv: %s", error)
 
-            with open(output_file, "a") as file:
-                if header_necessary:
-                    file.write(self.FILE_HEADER_TEST_CASES)
-                for test_case in test_cases:
-                    test_cases_string = "|".join(test_case.test_cases)
-                    file.write(f"{config.configuration.module_name},{test_case.iteration},{test_cases_string}\n")
-        except OSError as error:
-            self._logger.exception("Error while writing statistics: %s", error)
 
-    def _write_fitness_values(self, fitness_values: list[FitnessValues]):
+    def write_fitness_values(self, fitness_values: list[FitnessValues]):
         try:
             output_dir = Path(config.configuration.statistics_output.report_dir).resolve()
             output_file = output_dir / "fitness_values.csv"
@@ -111,9 +111,9 @@ class RawDataWriter:
                     file.write(self.FILE_HEADER_FITNESS_VALUES)
                 for fitnesses in fitness_values:
                     fitness_values_string = "|".join(str(fitness) for fitness in fitness_values)
-                    file.write(f"{config.configuration.module_name},{fitnesses.iteration},{max(fitnesses.fitness_values)},{min(fitnesses.fitness_values)},{statistics.mean(fitnesses.fitness_values)},{fitness_values_string}\n")
+                    file.write(f"{config.configuration.module_name},{fitnesses.iteration},{fitnesses.coverage},{max(fitnesses.fitness_values)},{min(fitnesses.fitness_values)},{statistics.mean(fitnesses.fitness_values)},{fitness_values_string}\n")
         except OSError as error:
-            self._logger.exception("Error while writing statistics: %s", error)
+            self._logger.exception("Error while writing fitness values to csv: %s", error)
 
     def _is_header_necessary(self, output_file) -> bool:
         try:
@@ -136,7 +136,7 @@ class MetricHelper:
         for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             mean_fitness : float = (statistics.mean(test.get_fitness() for test in generation.test_case_chromosomes))
-            self._logger.info(f"Mean fitness of iteration {i} is {mean_fitness}")
+            self._logger.debug(f"Mean fitness of iteration {i} is {mean_fitness}")
             result.append(mean_fitness)
 
         return result
@@ -147,7 +147,7 @@ class MetricHelper:
         for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             median_fitness : float = (statistics.median(test.get_fitness() for test in generation.test_case_chromosomes))
-            self._logger.info(f"Median fitness of iteration {i} is {median_fitness}")
+            self._logger.debug(f"Median fitness of iteration {i} is {median_fitness}")
             result.append(median_fitness)
 
         return result
@@ -158,7 +158,7 @@ class MetricHelper:
         for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             best_fitness : float = (max(test.get_fitness() for test in generation.test_case_chromosomes))
-            self._logger.info(f"Max fitness of iteration {i} is {best_fitness}")
+            self._logger.debug(f"Max fitness of iteration {i} is {best_fitness}")
             result.append(best_fitness)
 
         return result
@@ -169,7 +169,7 @@ class MetricHelper:
         for i in range(0 + int(self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 ) ), self.SLIDING_WINDOW_SIZE + self.SLIDING_WINDOW_SIZE * (calculation_iteration - 1 )):
             generation = actual_search_results[i]
             best_fitness : float = (min(test.get_fitness() for test in generation.test_case_chromosomes))
-            self._logger.info(f"Min fitness of iteration {i} is {best_fitness}")
+            self._logger.debug(f"Min fitness of iteration {i} is {best_fitness}")
             result.append(best_fitness)
 
         return result
@@ -180,7 +180,7 @@ class MetricHelper:
         for test in generation.test_case_chromosomes:
             fitnesses.append(test.get_fitness())
 
-        self._logger.info(f"Fitnesses are: {' '.join(map(str,fitnesses))}")
+        self._logger.debug(f"Fitnesses are: {' '.join(map(str,fitnesses))}")
 
         return fitnesses
 
@@ -191,7 +191,7 @@ class MetricHelper:
         result['10'] = best_fitnesses_binary.count('10') / (len(best_fitnesses_binary) - 1)
         result['11'] = best_fitnesses_binary.count('11') / (len(best_fitnesses_binary) - 1)
 
-        self._logger.info(f"Substring Propabilities for given Substring {best_fitnesses_binary} is: {' '.join(map(str, result.values()))}")
+        self._logger.debug(f"Substring Propabilities for given Substring {best_fitnesses_binary} is: {' '.join(map(str, result.values()))}")
         return result
 
     def get_fitness_evoluation_binary_string(self, best_fitnesses: list[float]) -> str:
@@ -204,7 +204,7 @@ class MetricHelper:
                 result.append(1)
 
         result_string =  ''.join(str(x) for x in result)
-        self._logger.info(f"Result Fitness Binary String: {result_string}")
+        self._logger.debug(f"Result Fitness Binary String: {result_string}")
         return result_string
 
     def get_average_fitness_of_generation(self, generation: TestSuiteChromosome) -> float:
@@ -215,10 +215,22 @@ class MetricHelper:
 
     def test_case_to_string(self, test_case: TestCase) -> str:
         statements_count = len(test_case.statements)
-        self._logger.info(f"Anzahl TestCaseStatements: {statements_count}")
+        statements = []
 
-        statements = [str(statement) for statement in test_case.statements]
+        for statement in test_case.statements:
+            statements.append(statement.__str__())
 
         statements_string = ", ".join(statements)
 
         return f"TestCase mit {statements_count} Statements: [{statements_string}]"
+
+    def module_to_string(self, module: ast.Module, format_with_black: bool = True) -> str:
+        output = ast.unparse(ast.fix_missing_locations(module))
+        if format_with_black:
+            # Import of black might cause problems if it is a SUT dependency,
+            # so we only import it if we need it.
+            import black  # noqa: PLC0415
+
+            output = black.format_str(output, mode=black.FileMode())
+
+        return output

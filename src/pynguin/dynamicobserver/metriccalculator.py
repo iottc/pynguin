@@ -6,8 +6,10 @@ import math
 import statistics
 from pynguin.ga.testsuitechromosome import TestSuiteChromosome
 from pynguin.dynamicobserver.metricutils import MetricHelper, Metric, FitnessObservationMethod
+from pynguin.testcase import export
 import pynguin.configuration as config
 import logging
+import time
 
 
 class MetricCalculator(ABC):
@@ -67,12 +69,10 @@ class FitnessVarianceCalculator(MetricCalculator):
                 case FitnessObservationMethod.MEAN:
                     generation_fitnesses = self.helper.get_fitness_of_generation(actual_search_results[search_iteration])
                     mean_fitness = statistics.mean(generation_fitnesses)
-                    self._logger.info(f"meanfitness: {mean_fitness}")
                     return self._calculate_variance(mean_fitness, generation_fitnesses)
                 case FitnessObservationMethod.MEDIAN:
                     generation_fitnesses = self.helper.get_fitness_of_generation(actual_search_results[search_iteration])
                     median_fitness = statistics.median(generation_fitnesses)
-                    self._logger.info(f"medianfitness: {median_fitness}")
                     return self._calculate_variance(median_fitness, generation_fitnesses)
                 case _:
                     return Metric.EMPTY, 0
@@ -193,7 +193,7 @@ class NeutralityVolumeCalculator(MetricCalculator):
             return Metric.EMPTY, 0
 
     def _calculate_neutrality_volume(self, fitnesses_to_observe: list[float]):
-        self._logger.info(f"Fitnesses NV: {fitnesses_to_observe} with NV: {len(set(fitnesses_to_observe))}.")
+        self._logger.debug(f"Fitnesses NV: {fitnesses_to_observe} with NV: {len(set(fitnesses_to_observe))}.")
         return Metric.NV, len(set(fitnesses_to_observe))
 
 class DiversityCalculator(MetricCalculator):
@@ -232,6 +232,60 @@ class DiversityCalculator(MetricCalculator):
 
         return first, second
 
+class DiversityCalculatorExperimental(MetricCalculator):
+
+    DISTANCES: dict[int, list[float]] = {}
+
+    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+        if search_iteration % self.SLIDING_WINDOW_SIZE == 0:
+            start_time = time.time_ns()
+
+            if search_iteration not in self.DISTANCES:
+                self._calculate_test_case_distance(actual_search_results[search_iteration], start_time, search_iteration)
+
+            match method:
+                case FitnessObservationMethod.MAX:
+                    return Metric.DIVEX, max(self.DISTANCES[search_iteration])
+                case FitnessObservationMethod.MEAN:
+                    return Metric.DIVEX, statistics.mean(self.DISTANCES[search_iteration])
+                case FitnessObservationMethod.MEDIAN:
+                    return Metric.DIVEX, statistics.median(self.DISTANCES[search_iteration])
+                case FitnessObservationMethod.MIN:
+                    return Metric.DIVEX, min(self.DISTANCES[search_iteration])
+                case _:
+                    return Metric.EMPTY, 0
+        else:
+            return Metric.EMPTY, 0
+
+    def _calculate_test_case_distance(self,  generation: TestSuiteChromosome, start_time: float, search_iteration: int) -> None :
+        if search_iteration > 1:
+            self.DISTANCES.pop(search_iteration - self.SLIDING_WINDOW_SIZE, None)
+
+        self.DISTANCES.update({search_iteration: []})
+
+        export_visitor = export.PyTestChromosomeToAstVisitor()
+
+        for i in range(len(generation.test_case_chromosomes) - 1):
+            generation.test_case_chromosomes[i].accept(export_visitor)
+            first_testcase = self.helper.module_to_string(export_visitor.to_module(), format_with_black=config.configuration.test_case_output.format_with_black)
+            for j in range(i + 1, len(generation.test_case_chromosomes)):
+                generation.test_case_chromosomes[j].accept(export_visitor)
+                second_testcase = self.helper.module_to_string(export_visitor.to_module(), format_with_black=config.configuration.test_case_output.format_with_black)
+                a, b = self._align_length(first_testcase, second_testcase)
+                self.DISTANCES[search_iteration].append(hamming(a, b))
+
+        self._logger.info(f"Experimental diversity calculation took {(time.time_ns() - start_time) / 60000000000}")
+
+    def _align_length(self, first_testcase: str, second_testcase: str):
+        first = [char for char in first_testcase]
+        second = [char for char in second_testcase]
+
+        max_len = max(len(first), len(second))
+        first += [''] * (max_len - len(first))
+        second += [''] * (max_len - len(second))
+
+        return first, second
+
 class FunctionDispersionCalculator(MetricCalculator):
     # Evtl. existieren zu wenige Individuen
     def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
@@ -242,9 +296,9 @@ class FunctionDispersionCalculator(MetricCalculator):
             case FitnessObservationMethod.MEAN:
                 return Metric.FD, statistics.mean(self._calculate_distances_between_normalized_fitnesses(self._normalize_fitnesses(self.helper.get_fitness_of_generation(actual_search_results[search_iteration]))))
             case FitnessObservationMethod.MEDIAN:
-                return Metric.DIV, statistics.median(self._calculate_distances_between_normalized_fitnesses(self._normalize_fitnesses(self.helper.get_fitness_of_generation(actual_search_results[search_iteration]))))
+                return Metric.FD, statistics.median(self._calculate_distances_between_normalized_fitnesses(self._normalize_fitnesses(self.helper.get_fitness_of_generation(actual_search_results[search_iteration]))))
             case FitnessObservationMethod.MIN:
-                return Metric.DIV, min(self._calculate_distances_between_normalized_fitnesses(self._normalize_fitnesses(self.helper.get_fitness_of_generation(actual_search_results[search_iteration]))))
+                return Metric.FD, min(self._calculate_distances_between_normalized_fitnesses(self._normalize_fitnesses(self.helper.get_fitness_of_generation(actual_search_results[search_iteration]))))
             case _:
                 return Metric.EMPTY, 0
 
@@ -284,7 +338,7 @@ class StateVarianceCalculator(MetricCalculator):
                 return Metric.EMPTY, 0
 
     def _calculate_binned_variance(self, binned_fitnesses: np.ndarray, subtrahend: float):
-        self._logger.info(f"Anzahl NaNs: {np.sum(np.isnan(binned_fitnesses))}")
+        self._logger.debug(f"Anzahl NaNs: {np.sum(np.isnan(binned_fitnesses))}")
 
         fitness_values = np.nan_to_num(binned_fitnesses, nan=0.0, posinf=0.0, neginf=0.0)
 
