@@ -33,7 +33,7 @@ import pynguin.ga.testsuitechromosome as tsc
 import pynguin.ga.testsuitechromosomefactory as tscf
 import pynguin.testcase.testfactory as tf
 import pynguin.utils.statistics.statisticsobserver as sso
-import pynguin.dynamicobserver.dynamicmetricobserver as do
+import pynguin.dynamicobserver.dynamicfeatureobserver as do
 
 from pynguin.analyses.constants import ConstantProvider
 from pynguin.analyses.constants import EmptyConstantProvider
@@ -263,8 +263,8 @@ class TestSuiteGenerationAlgorithmFactory(GenerationAlgorithmFactory[tsc.TestSui
         strategy.add_search_observer(sso.IterationObserver())
         strategy.add_search_observer(sso.BestIndividualObserver())
 
-        if config.configuration.metric_configuration.enable_metric_calculation:
-            strategy.add_search_observer(do.DynamicMetricObserver())
+        if config.configuration.metric_configuration.enable_feature_calculation:
+            strategy.add_search_observer(do.DynamicFeatureObserver())
 
         if config.configuration.metric_configuration.enable_raw_data_output:
             strategy.add_search_observer(do.GenerationObserver())

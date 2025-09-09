@@ -579,9 +579,9 @@ class StoppingConfiguration:
     (up to maximum_test_execution_timeout)."""
 
 @dataclasses.dataclass
-class MetricConfiguration:
+class FeatureConfiguration:
 
-    enable_metric_calculation: bool = False
+    enable_feature_calculation: bool = False
     """Enable dynmamic metric calculation"""
 
     sliding_window_size: int = 10

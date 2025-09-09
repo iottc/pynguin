@@ -10,7 +10,7 @@ import pynguin.configuration as config
 import logging
 
 
-class MetricCalculator(ABC):
+class FeatureCalculator(ABC):
     _logger = logging.getLogger(__name__)
 
     def __init__(self):
@@ -19,7 +19,7 @@ class MetricCalculator(ABC):
 
 
     @abstractmethod
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         """Called to calculate specific metric.
 
         Args:
@@ -27,9 +27,9 @@ class MetricCalculator(ABC):
             search_iteration: Number of iterations done.
         """
 
-class PopulationInformationContentCalculator(MetricCalculator):
+class PopulationInformationContentCalculator(FeatureCalculator):
 
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
@@ -61,8 +61,8 @@ class PopulationInformationContentCalculator(MetricCalculator):
 
         return Metric.PIC, pic * -1
 
-class FitnessVarianceCalculator(MetricCalculator):
-        def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+class FitnessVarianceCalculator(FeatureCalculator):
+        def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             match method:
                 case FitnessObservationMethod.MEAN:
                     generation_fitnesses = self.helper.get_fitness_of_generation(actual_search_results[search_iteration])
@@ -90,9 +90,9 @@ class FitnessVarianceCalculator(MetricCalculator):
 
 
 
-class ChangeRateCalculator(MetricCalculator):
+class ChangeRateCalculator(FeatureCalculator):
 
-        def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+        def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
             if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
                 calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
@@ -122,11 +122,11 @@ class ChangeRateCalculator(MetricCalculator):
 
             return (Metric.CR, sum / self.SLIDING_WINDOW_SIZE)
 
-class AutocorrelationCalculator(MetricCalculator):
+class AutocorrelationCalculator(FeatureCalculator):
 
     STEP_SIZE = 1
 
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
@@ -168,9 +168,9 @@ class AutocorrelationCalculator(MetricCalculator):
 
         return Metric.AC, autocorellation_numerator / autocorellation_denominator
 
-class NeutralityVolumeCalculator(MetricCalculator):
+class NeutralityVolumeCalculator(FeatureCalculator):
 
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         if search_iteration % self.SLIDING_WINDOW_SIZE == 0 and search_iteration > 0:
             calculation_iteration = search_iteration // self.SLIDING_WINDOW_SIZE
 
@@ -196,8 +196,8 @@ class NeutralityVolumeCalculator(MetricCalculator):
         self._logger.info(f"Fitnesses NV: {fitnesses_to_observe} with NV: {len(set(fitnesses_to_observe))}.")
         return Metric.NV, len(set(fitnesses_to_observe))
 
-class DiversityCalculator(MetricCalculator):
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+class DiversityCalculator(FeatureCalculator):
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
 
         match method:
             case FitnessObservationMethod.MAX:
@@ -232,9 +232,9 @@ class DiversityCalculator(MetricCalculator):
 
         return first, second
 
-class FunctionDispersionCalculator(MetricCalculator):
+class FunctionDispersionCalculator(FeatureCalculator):
     # Evtl. existieren zu wenige Individuen
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
 
         match method:
             case FitnessObservationMethod.MAX:
@@ -264,8 +264,8 @@ class FunctionDispersionCalculator(MetricCalculator):
 
         return normalized_fitnesses
 
-class StateVarianceCalculator(MetricCalculator):
-    def calculate_metric(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
+class StateVarianceCalculator(FeatureCalculator):
+    def calculate_feature(self, actual_search_results: list[TestSuiteChromosome], search_iteration : int, method: FitnessObservationMethod) -> tuple[Metric, float]:
         generation_fitness = self.helper.get_fitness_of_generation(actual_search_results[search_iteration])
         match method:
             case FitnessObservationMethod.MAX:

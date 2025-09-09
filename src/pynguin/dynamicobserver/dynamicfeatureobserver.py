@@ -1,12 +1,12 @@
 import pynguin.ga.testsuitechromosome as tsc
 import pynguin.ga.searchobserver as so
-import pynguin.dynamicobserver.metriccalculator as calc
+import pynguin.dynamicobserver.featurecalculator as calc
 from pynguin.dynamicobserver.metricutils import MetricWriter, MetricMeasure, MetricHelper, Metric, FitnessObservationMethod, TestCasesStrings, FitnessValues, RawDataWriter
 import time
 
 import logging
 
-class DynamicMetricObserver(so.SearchObserver):
+class DynamicFeatureObserver(so.SearchObserver):
 
     _logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class DynamicMetricObserver(so.SearchObserver):
 
         self._writer = MetricWriter()
         self.helper = MetricHelper()
-        self._calculators: list[calc.MetricCalculator] = []
+        self._calculators: list[calc.FeatureCalculator] = []
 
 
     def before_search_start(self, start_time_ns: int) -> None:
@@ -58,7 +58,7 @@ class DynamicMetricObserver(so.SearchObserver):
     def _init_metric_calculation(self):
         for calculator in self._calculators:
             for observation_method in FitnessObservationMethod:
-                measure  = calculator.calculate_metric(self.iteration_results, self.iterations, observation_method)
+                measure  = calculator.calculate_feature(self.iteration_results, self.iterations, observation_method)
                 if Metric.EMPTY is not measure[0]:
                     self.metric_results.append(MetricMeasure(measure[0], observation_method, self.iterations, measure[1], self.helper.get_actual_population_size(self.iteration_results), max(self.helper.get_fitness_of_generation(self.iteration_results[len(self.iteration_results) -1])), self.helper.get_average_fitness_of_generation(self.iteration_results[len(self.iteration_results) -1]),  min(self.helper.get_fitness_of_generation(self.iteration_results[len(self.iteration_results) -1])), time.time_ns() - self.start_time))
 
